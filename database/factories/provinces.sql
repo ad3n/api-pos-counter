@@ -1,0 +1,58 @@
+-- phpMyAdmin SQL Dump
+-- version 4.8.3
+-- https://www.phpmyadmin.net/
+--
+-- Host: 127.0.0.1
+-- Generation Time: Nov 10, 2018 at 10:18 AM
+-- Server version: 10.1.36-MariaDB
+-- PHP Version: 7.2.11
+
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+SET AUTOCOMMIT = 0;
+START TRANSACTION;
+SET time_zone = "+00:00";
+
+--
+-- Database: `db_nt_beta_1`
+--
+
+--
+-- Dumping data for table `provinces`
+--
+
+INSERT INTO `provinces` (`id`, `country_id`, `name`, `created_at`) VALUES
+('11', '11', 'ACEH', '2018-08-09 09:54:59'),
+('12', '11', 'SUMATERA UTARA', '2018-08-09 09:54:59'),
+('13', '11', 'SUMATERA BARAT', '2018-08-09 09:54:59'),
+('14', '11', 'RIAU', '2018-08-09 09:54:59'),
+('15', '11', 'JAMBI', '2018-08-09 09:54:59'),
+('16', '11', 'SUMATERA SELATAN', '2018-08-09 09:54:59'),
+('17', '11', 'BENGKULU', '2018-08-09 09:54:59'),
+('18', '11', 'LAMPUNG', '2018-08-09 09:54:59'),
+('19', '11', 'KEPULAUAN BANGKA BELITUNG', '2018-08-09 09:54:59'),
+('21', '11', 'KEPULAUAN RIAU', '2018-08-09 09:54:59'),
+('31', '11', 'DKI JAKARTA', '2018-08-09 09:54:59'),
+('32', '11', 'JAWA BARAT', '2018-08-09 09:54:59'),
+('33', '11', 'JAWA TENGAH', '2018-08-09 09:54:59'),
+('34', '11', 'DI YOGYAKARTA', '2018-08-09 09:54:59'),
+('35', '11', 'JAWA TIMUR', '2018-08-09 09:54:59'),
+('36', '11', 'BANTEN', '2018-08-09 09:54:59'),
+('51', '11', 'BALI', '2018-08-09 09:54:59'),
+('52', '11', 'NUSA TENGGARA BARAT', '2018-08-09 09:54:59'),
+('53', '11', 'NUSA TENGGARA TIMUR', '2018-08-09 09:54:59'),
+('61', '11', 'KALIMANTAN BARAT', '2018-08-09 09:54:59'),
+('62', '11', 'KALIMANTAN TENGAH', '2018-08-09 09:54:59'),
+('63', '11', 'KALIMANTAN SELATAN', '2018-08-09 09:54:59'),
+('64', '11', 'KALIMANTAN TIMUR', '2018-08-09 09:54:59'),
+('65', '11', 'KALIMANTAN UTARA', '2018-08-09 09:54:59'),
+('71', '11', 'SULAWESI UTARA', '2018-08-09 09:54:59'),
+('72', '11', 'SULAWESI TENGAH', '2018-08-09 09:54:59'),
+('73', '11', 'SULAWESI SELATAN', '2018-08-09 09:54:59'),
+('74', '11', 'SULAWESI TENGGARA', '2018-08-09 09:54:59'),
+('75', '11', 'GORONTALO', '2018-08-09 09:54:59'),
+('76', '11', 'SULAWESI BARAT', '2018-08-09 09:54:59'),
+('81', '11', 'MALUKU', '2018-08-09 09:54:59'),
+('82', '11', 'MALUKU UTARA', '2018-08-09 09:54:59'),
+('91', '11', 'PAPUA BARAT', '2018-08-09 09:54:59'),
+('94', '11', 'PAPUA', '2018-08-09 09:54:59');
+COMMIT;
