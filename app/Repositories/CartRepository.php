@@ -4,7 +4,6 @@ namespace App\Repositories;
 use DB;
 use Log;
 use Auth;
-use Cache;
 use App\Models\Product;
 use App\Models\Transaction;
 use App\Models\CategorySelection;
@@ -17,6 +16,7 @@ use Illuminate\Validation\ValidateException;
 use Illuminate\Database\QueryException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Cache;
 
 class CartRepository implements Constants, CacheStoreInterface {
 

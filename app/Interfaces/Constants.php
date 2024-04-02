@@ -15,7 +15,7 @@ interface Constants
 	/**
 	 * Transaction type
 	 */
-	const TRANSACTION_TYPE_OMZET = 'omzet';
+	const TRANSACTION_TYPE_OMZET = 'income';
 	const TRANSACTION_TYPE_EXPENSE = 'expense';
 	const TRANSACTION_STATUS_SUCCESS = 'success';
 	const TRANSACTION_STATUS_PROCESS = 'process';

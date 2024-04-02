@@ -27,19 +27,26 @@ trait OutputWrap
 			'order_no'				=> $item->order_no,
 			'order_name'			=> $item->order_name,
 			'status'				=> $item->status,
+            'provider'              => $item->provider,
+            'staff'                 => $item->employee,
 			'type' => [
 				'value'	=> $item->type,
 				'label'	=> __("user.transaction_type.{$item->type}")
 			],
+            'expense_type' => $item->expense_type ? [
+				'value'	=> $item->expense_type,
+				'label'	=> __("user.expense_type.{$item->expense_type}")
+			] : null,
 			'total' 				=> $item->getItems()->sum("total"),
 			'qty'  					=> $item->getItems()->sum("qty"),
-			'saldo'					=> $item->transactionSaldo()->first() ? $item->transactionSaldo()->first()->amount : 0,
+			'saldo'					=> $item->transactionSaldo()->first() ?
+                $item->transactionSaldo()->first()->amount : 0,
 			'work_date'				=> [
 				'raw'	=> $item->work_date,
 				'long' 	=> local_date($item->work_date)
 			],
 			'created_date'		=> [
-				'raw'	=> Carbon::parse($item->created_at)->toDateTimeString(),
+				'raw'	=> Carbon::parse($item->created_at)->setTimezone("Asia/Jakarta")->toIso8601String(),
 				'long' 	=> local_datetime($item->created_at)
 			],
 			'payment_method'    => [
@@ -54,7 +61,7 @@ trait OutputWrap
 		];
 
 		$prepare['paid_date'] = [
-			'raw'	=> $item->paid_at ? Carbon::parse($item->paid_at)->toDateTimeString() : null,
+			'raw'	=> $item->paid_at ? Carbon::parse($item->paid_at)->setTimezone("Asia/Jakarta")->toIso8601String() : null,
 			'long' 	=> $item->paid_at ? local_datetime($item->paid_at) : null
 		];
 

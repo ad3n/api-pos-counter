@@ -8,15 +8,19 @@ use App\Models\CategorySelection;
 use App\Traits\Authentication;
 use App\Interfaces\Constants;
 use App\Jobs\Events\MerchantProductAdded;
+use App\Models\Brand;
 use Illuminate\Validation\ValidateException;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
-use Log;
-use DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use Auth;
-use Cache;
-
+use Illuminate\Database\Query\Builder;
+use Illuminate\Database\Query\JoinClause;
+use Illuminate\Support\Facades\Cache;
+use Psy\Readline\Hoa\Console as HoaConsole;
+use SebastianBergmann\Environment\Console;
 
 class ProductRepository implements Constants
 {
@@ -74,7 +78,7 @@ class ProductRepository implements Constants
 	 * Get products by arguments
 	 *
 	 * @author Dian Afrial
-	 * @return void
+	 * @return \Illuminate\Support\Collection
 	 */
 	public function getProducts($args = [])
 	{
@@ -82,7 +86,7 @@ class ProductRepository implements Constants
 
 		$model = $this->searchCriteria($args);
 
-		$model = $model->orderBy("products." . $this->orderBy[0], $this->orderBy[1]);
+		//$model = $model->orderBy("products." . $this->orderBy[0], $this->orderBy[1]);
 
 		return $model->orderBy("products." . $this->orderBy[0], $this->orderBy[1])
 			->offset($this->offset)
@@ -96,7 +100,7 @@ class ProductRepository implements Constants
 
 		$model = $this->searchCriteria($args);
 
-		$model = $model->orderBy("products." . $this->orderBy[0], $this->orderBy[1]);
+		//$model = $model->orderBy("products." . $this->orderBy[0], $this->orderBy[1]);
 
 		return [
 			'count' => $model->count(),
@@ -178,13 +182,37 @@ class ProductRepository implements Constants
 	 * Search criteria
 	 *
 	 * @author Dian Afrial
-	 * @return object
+	 * @return \Illuminate\Database\Query\Builder
 	 */
 	public function searchCriteria($args)
 	{
+        $brands = DB::table('brands');
 		$model = DB::table("products");
-		$model = $model->whereNull("deleted_at")
-			->where("products.merchant_id", $this->getUserMerchant()->id);
+		$model = $model
+            ->select(
+                "products.id as id",
+                "products.name as name",
+                "products.code as code",
+                "products.type as type",
+                "products.brand_id as brand_id",
+                "brands.name as brand_name",
+                "products.supplier_id as supplier_id",
+                "suppliers.name as supplier_name",
+                "products.regular_price as price",
+                "products.sale_price as sale_price",
+                "products.on_sale as on_sale",
+                "products.capital_cost as capital_cost",
+                "products.created_at as created_at",
+            )
+            ->whereNull("deleted_at")
+            ->join('brands', function ($join) {
+                $join->on('products.brand_id', '=', 'brands.id');
+            })
+            ->leftJoin('suppliers', function ($join) {
+                $join->on('products.supplier_id', '=', 'suppliers.id');
+            })
+            ->where("products.merchant_id", $this->getUserMerchant()->id);
+
 
 		if (isset($args['category_id']) && !empty($args['category_id'])) {
 			$id = $args['category_id'];
@@ -208,6 +236,8 @@ class ProductRepository implements Constants
 			$join->on('products.id', '=', 'category_selections.product_id');
 		});
 
+        Log::info("Model Products", $model->get()->toArray());
+
 		return $model;
 	}
 
@@ -219,6 +249,11 @@ class ProductRepository implements Constants
 	 */
 	public function getCategorized($request)
 	{
+        // save new to cache
+		if (Cache::has($this->getKeyMerchantProducts())) {
+			Cache::delete($this->getKeyMerchantProducts());
+		}
+
 		// Get cache if has
 		if ($request->input('keyword') == '') {
 			if (Cache::has($this->getKeyMerchantProducts())) {
@@ -227,19 +262,48 @@ class ProductRepository implements Constants
 			}
 		}
 
-		$categories = (new Category)->getProducts($this->getUserMerchant()->id)->get();
+		$categories = (new Category)->getProducts(
+            $this->getUserMerchant()->id,
+            $request->input('category_id') ?? null
+        )->get();
+
 		$data = [];
+
 		if (!empty($categories)) {
 			foreach ($categories as $item) {
 				$id = $item->id;
 				$data[$id]['name'] = $item->name;
 				$models = DB::table('products')
+                    ->select(
+                        "products.id as id",
+                        "products.name as name",
+                        "products.code as code",
+                        "products.type as type",
+                        "category_selections.category_id as category_id",
+                        "products.brand_id as brand_id",
+                        "brands.name as brand_name",
+                        "products.supplier_id as supplier_id",
+                        "suppliers.name as supplier_name",
+                        "products.regular_price as price",
+                        "products.sale_price as sale_price",
+                        "products.on_sale as on_sale",
+                        "products.active as active",
+                        "products.capital_cost as capital_cost",
+                        "products.created_at as created_at",
+                    )
+                    ->leftJoin('brands', function ($join) {
+                        $join->on('products.brand_id', '=', 'brands.id');
+                    })
+                    ->leftJoin('suppliers', function ($join) {
+                        $join->on('products.supplier_id', '=', 'suppliers.id');
+                    })
 					->join('category_selections', function ($join) use ($id) {
 						$join->on('products.id', '=', 'category_selections.product_id')
 							->where('category_selections.category_id', '=', $id);
 					})
 					->where("products.merchant_id", $this->getUserMerchant()->id)
-					->whereNull("deleted_at");
+                    ->where("products.active", $request->input('active') == "true" ? 1 : 0 )
+					->whereNull("products.deleted_at");
 
 				if ($request->input('keyword')) {
 					$keyword = $request->input('keyword');
@@ -250,7 +314,6 @@ class ProductRepository implements Constants
 				$models = $models->orderBy("name", "asc")
 					->get()
 					->toArray();
-
 
 				$data[$id]['products'] = $models;
 			}
@@ -332,7 +395,11 @@ class ProductRepository implements Constants
 
 			if ($request->input("sale_price")) {
 				$prepare['sale_price'] = $request->input("sale_price");
-			}
+                $prepare['on_sale'] = true;
+			} else {
+                $prepare['sale_price'] = $request->input("sale_price") == "0" || empty($request->input("sale_price")) ? null : $request->input("sale_price");
+                $prepare['on_sale'] = false;
+            }
 
 			if ($request->input("capital_cost")) {
 				$prepare['capital_cost'] = floatval($request->input("capital_cost"));
@@ -385,6 +452,43 @@ class ProductRepository implements Constants
 
 		return $res;
 	}
+
+    /**
+     * Make active or deactivate product
+     *
+     * @param int $id
+     * @param \Request $request
+     * @return mixed
+     */
+    public function makeActiveDeactivate($id, $request)
+    {
+        try {
+            $model = $this->product->findOrFail($id);
+
+            if( $model ) {
+                $model->active = $request->input("active");
+                $model->save();
+            }
+
+            $res = [
+                'success' 	=> true,
+                'messages' 	=> __('user.success_edit_product')
+            ];
+
+            return $res;
+
+        } catch (ModelNotFoundException $e) {
+
+			Log::error("Model Not Found : " . $e->getMessage());
+
+			abort(400, __("user.model_not_found"));
+        } catch (QueryException $e) {
+
+			Log::error("Activation Product SQL Query : " . $e->getMessage());
+
+			abort($e->getCode(), $e->getMessage());
+		}
+    }
 
 	/**
 	 * Trash the product ID
@@ -473,6 +577,14 @@ class ProductRepository implements Constants
 				$newProduct->type = $request->input("type");
 			}
 
+            if ($request->input("brand_id")) {
+				$newProduct->brand_id = $request->input("brand_id");
+			}
+
+            if ($request->input("supplier_id")) {
+				$newProduct->supplier_id = $request->input("supplier_id");
+			}
+
 			$newProduct->save();
 
 			// Append product id to category selections
@@ -527,8 +639,26 @@ class ProductRepository implements Constants
 		if (isset($args['per_page']) || !empty($args['per_page']))
 			$this->perPage = $args['per_page'];
 
-		if (isset($args['order_by']) || !empty($args['order_by']))
-			$this->orderBy = $args['order_by'];
+        if (isset($args['order_by']) || !empty($args['order_by']))
+			$this->orderBy[0] = $args['order_by'];
+
+        if (isset($args['order']) || !empty($args['order']))
+			$this->orderBy[1] = $args['order'];
+	}
+
+    /**
+     * Brand list
+     *
+     * @return array
+     */
+    public function getBrandList($arr)
+	{
+		try {
+			$models = Brand::all()->toArray();
+			return $models;
+		} catch (QueryException $e) {
+			abort(400, $e->getMessage());
+		}
 	}
 
 	public function fetchCategory($id)

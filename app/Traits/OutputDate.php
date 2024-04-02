@@ -12,10 +12,31 @@ trait OutputDate {
     public function encapsulateDate($date)
     {
         return [
-            'raw'  => $date,
+            'raw'  => $this->iso8601String($date),
             'long' => $this->firstLocaldate($date, false, true),
             'short' => $this->firstLocaldate($date, true, true)
         ];
+    }
+
+    public function iso8601String($date): string
+    {
+        $country_id = 'id_Date';
+        $tz_id = 'Asia/Jakarta';
+
+        if( method_exists($this, 'country') ) {
+            if( $this->country()->first() && optional($this->country()->first())->locale ) {
+                $country_id = $this->country()->first()->locale;
+            }
+
+            if( $this->country()->first() && optional($this->country()->first())->timezone ) {
+                $tz_id = $this->country()->first()->timezone;
+            }
+        }
+
+        $carbon = Carbon::parse($date)->setTimezone( $tz_id );
+
+
+        return $carbon->toIso8601String();
     }
 
     /**
@@ -28,7 +49,7 @@ trait OutputDate {
      */
     protected function firstLocaldate($date = null, $short = false, $day_name = false)
     {
-        $country_id = 'id';
+        $country_id = 'id_Date';
         $tz_id = 'Asia/Jakarta';
 
         if( method_exists($this, 'country') ) {
@@ -42,25 +63,38 @@ trait OutputDate {
         }
 
         Carbon::setLocale( $country_id );
-        
+
         if( $date ) {
-            $carbon = Carbon::parse($date)->setTimezone( $tz_id );
+            $carbon = Carbon::parse($date)->locale($country_id)->setTimezone( $tz_id );
         } else {
-            $carbon = Carbon::now()->setTimezone( $tz_id );
+            $carbon = Carbon::now()->locale($country_id)->setTimezone( $tz_id );
         }
 
+        // if( $short ) {
+        //     $format = '%d %b %Y';
+        //     if( $day_name ) {
+        //         $format = '%a, %d %B %Y %H:%M';
+        //     }
+        // } else {
+        //     $format = '%d %B %Y';
+        //     if( $day_name ) {
+        //         $format = '%A, %d %B %Y %H:%M';
+        //     }
+        // }
+
         if( $short ) {
-            $format = '%d %b %Y';
+            $format = "{$carbon->day} {$carbon->shortMonthName} {$carbon->year}";
             if( $day_name ) {
-                $format = '%a, %d %B %Y %H:%M';
+                $format =  "{$carbon->shortDayName}, {$carbon->day} {$carbon->shortMonthName} {$carbon->year} {$carbon->format('H:i')}";
             }
         } else {
-            $format = '%d %B %Y';
+            $format = "{$carbon->day} {$carbon->monthName} {$carbon->year}";
             if( $day_name ) {
-                $format = '%A, %d %B %Y %H:%M';
+              $format = "{$carbon->dayName}, {$carbon->day} {$carbon->monthName} {$carbon->year} {$carbon->format('H:i')}";
             }
         }
-        
-        return $carbon->formatLocalized($format);
+
+
+        return $format;
     }
 }

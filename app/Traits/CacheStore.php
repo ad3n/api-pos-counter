@@ -6,7 +6,6 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 trait CacheStore
 {
-
 	public $configCreateExpiry;
 	public $configPutExpiry;
 	public $messageEmptyGet;

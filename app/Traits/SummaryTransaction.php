@@ -6,7 +6,7 @@ use App\Models\TransactionItem;
 use App\Models\Transaction;
 use Carbon\Carbon;
 use phpDocumentor\Reflection\Types\Integer;
-
+use Log;
 trait SummaryTransaction
 {
   /**
@@ -66,7 +66,7 @@ trait SummaryTransaction
   }
 
   /**
-   * Get last transaction date
+   * Get transaction list by date
    *
    * @author Dian Afrial
    * @return object
@@ -89,28 +89,37 @@ trait SummaryTransaction
     $transactionModel = new Transaction;
 
     $listModel = $transactionModel->getDateRecords($date)
-      ->where("merchant_id", $this->merchant_id)
-      ->orderBy("created_at", 'desc');
+        ->where("merchant_id", $this->merchant_id)
+        ->orderBy("created_at", 'desc');
 
     if ($args['employee_id']) {
-      $listModel = $listModel->where("employee_id",  $args['employee_id']);
+        $listModel = $listModel->where("employee_id",  $args['employee_id']);
     }
 
     if ($args['type'] !== null) {
-      $listModel = $listModel->where("type",  $args['type']);
+        $listModel = $listModel->where("type", $args['type']);
     }
 
-    if ($args['offset'] > -1) {
-      $listModel = $listModel->offset($args['offset']);
+    if (isset($args['category_id'])) {
+        $cat_id = $args['category_id'];
+        $listModel = $listModel->whereHas("transactionItem", function($query) use ($cat_id) {
+            $query->where("category_id", $cat_id );
+        });
     }
 
-    $listModel = $listModel->take($args['per_page'] > 0 ? $args['per_page'] : 10);
+    if( $args['per_page'] > -1 ) {
+        if ($args['offset'] > -1) {
+            $listModel = $listModel->offset($args['offset']);
+        }
+
+        $listModel = $listModel->take($args['per_page'] > 0 ? $args['per_page'] : 10);
+    }
 
     return $listModel->get();
   }
 
   /**
-   * Get last transaction status
+   * Get transaction list by status
    *
    * @author Dian Afrial
    * @return object
@@ -171,34 +180,18 @@ trait SummaryTransaction
     $listModel = $transactionModel->getDateRecords($date)
       ->where("merchant_id", $this->merchant_id)
       ->where("payment_status", 'credit')
-      ->where("type", 'omzet')
+      ->where("type", 'income')
       ->whereNull("paid_at");
 
     if ($request->input('employee_id')) {
       $listModel = $listModel->where('employee_id', $request->input('employee_id'));
     }
 
-    return $listModel;
-  }
-
-  /**
-   * Get debit transaction by date
-   *
-   * @author Dian Afrial
-   * @return void
-   */
-  public function getPaidTransactionsByDate($date = '', $request) : Object
-  {
-    $transactionModel = new Transaction;
-
-    $listModel = $transactionModel->getDateRecords($date)
-      ->where("merchant_id", $this->merchant_id)
-      ->where("payment_status", 'paid')
-      ->where("type", 'omzet')
-      ->whereNotNull("paid_at");
-
-    if ($request->input('employee_id')) {
-      $listModel = $listModel->where('employee_id', $request->input('employee_id'));
+    if ($request->input('category_id')) {
+        $cat_id = $request->input('category_id');
+        $listModel = $listModel->whereHas("transactionItem", function($query) use ($cat_id) {
+            $query->where("category_id", $cat_id );
+        });
     }
 
     return $listModel;
@@ -208,7 +201,75 @@ trait SummaryTransaction
    * Get debit transaction by date
    *
    * @author Dian Afrial
-   * @return void
+   * @return mixed
+   */
+  public function getIncomeTransactionsByDate($date = '', $request) : Object
+  {
+    $transactionModel = new Transaction;
+
+    // $cat_id = $request->input('category_id');
+    // $listModel = $transactionModel->whereHas("transactionItem", function($query) use ($cat_id) {
+    //     $query->where("category_id", $cat_id );
+    // });
+
+    $listModel = $transactionModel->where("work_date", $date)
+      ->where("merchant_id", $this->merchant_id)
+      ->where("payment_status", 'paid')
+      ->where("type", 'income')
+      ->whereNotNull("paid_at");
+
+    if ($request->input('employee_id')) {
+        $listModel = $listModel->where('employee_id', $request->input('employee_id'));
+    }
+
+    if ($request->input('category_id')) {
+        $cat_id = $request->input('category_id');
+        $listModel = $listModel->whereHas("transactionItem", function($query) use ($cat_id) {
+            $query->where("category_id", $cat_id );
+        });
+    }
+
+    return $listModel;
+  }
+
+  public function getIncomeTransactionsByCategory($date = '', $request, $cat_ids) : Object
+  {
+    $transactionModel = new Transaction;
+
+    $listModel = $transactionModel->where("work_date", $date)
+        ->where("merchant_id", $this->merchant_id)
+        ->where("payment_status", 'paid')
+        ->where("type", 'income')
+        ->whereNotNull("paid_at");
+
+    if( $cat_ids ) {
+        $listModel = $listModel->whereHas("transactionItem", function($query) use ($cat_ids) {
+            $query->where("category_id", $cat_ids );
+        });
+    }
+
+    if ($request->input('employee_id')) {
+      $listModel = $listModel->where('employee_id', $request->input('employee_id'));
+    }
+
+    return $listModel;
+  }
+
+  public function getSummaryIncomeTransactionsByCategory($date = '', $request, $cat_ids)
+  {
+    return [
+        'count' => $this->getIncomeTransactionsByCategory($date, $request, $cat_ids)->count(),
+        'total' => $this->getIncomeTransactionsByCategory($date, $request, $cat_ids)->get()->sum(function ($collection) {
+            return $collection->getItems()->sum('total');
+        })
+    ];
+  }
+
+  /**
+   * Get debit transaction by date
+   *
+   * @author Dian Afrial
+   * @return mixed
    */
   public function getExpensePaidTransactionsByDate($date = '', $request) : Object
   {
@@ -222,6 +283,30 @@ trait SummaryTransaction
 
     if ($request->input('employee_id')) {
       $listModel = $listModel->where('employee_id', $request->input('employee_id'));
+    }
+
+    return $listModel;
+  }
+
+   /**
+   * Get withdrawal expense transaction by date
+   *
+   * @author Dian Afrial
+   * @return mixed
+   */
+  public function getExpenseTransactionsByDate($date = '', $request, $type = "tarik_tunai") : Object
+  {
+    $transactionModel = new Transaction;
+
+    $listModel = $transactionModel->getDateRecords($date)
+        ->where("merchant_id", $this->merchant_id)
+        ->where("payment_status", 'paid')
+        ->where("type", "expense")
+        ->where("expense_type", $type)
+        ->whereNotNull("paid_at");
+
+    if ($request->input('employee_id')) {
+        $listModel = $listModel->where('employee_id', $request->input('employee_id'));
     }
 
     return $listModel;
@@ -293,19 +378,62 @@ trait SummaryTransaction
     return $transactionModel->count();
   }
 
-  public function getTopList($request)
-  {
-    $transactionItemModel = new TransactionItem;
+    public function getTopList($request)
+    {
+        $transactionItemModel = new TransactionItem;
 
-    $defaults = [
-      'employee_id' => null,
-      'month'       => date('m'),
-      'year'        => date('Y'),
-      'merchant_id' => $this->getUserMerchant()->id
-    ];
+        $defaults = [
+            'employee_id' => null,
+            'month'       => date('m'),
+            'year'        => date('Y'),
+            'merchant_id' => $this->getUserMerchant()->id
+        ];
 
-    $args = array_merge($defaults, $request->all());
+        $args = array_merge($defaults, $request->all());
 
-    return $transactionItemModel->getGroupProduct($args);
-  }
+        return $transactionItemModel->getGroupProduct($args);
+    }
+
+    public function getExpenseWithdrawal($date, $request)
+    {
+        return [
+            'count' => $this->getExpenseTransactionsByDate($date, $request, 'tarik_tunai')->count(),
+            'total' => $this->getExpenseTransactionsByDate($date, $request, 'tarik_tunai')->get()->sum(function ($collection) {
+                return $collection->getItems()->sum('total');
+            }),
+            'profit' => $this->getExpenseTransactionsByDate($date, $request, 'tarik_tunai')->get()->sum(function ($collection) {
+                return $collection->getItems()->sum('credit');
+            })
+        ];
+    }
+
+    public function getExpenseSpending($date, $request)
+    {
+        return [
+            'count' => $this->getExpenseTransactionsByDate($date, $request, 'belanja')->count(),
+            'total' => $this->getExpenseTransactionsByDate($date, $request, 'belanja')->get()->sum(function ($collection) {
+                return $collection->getItems()->sum('total');
+            })
+        ];
+    }
+
+    public function getExpenseLoan($date, $request)
+    {
+        return [
+            'count' => $this->getExpenseTransactionsByDate($date, $request, 'pinjaman')->count(),
+            'total' => $this->getExpenseTransactionsByDate($date, $request, 'pinjaman')->get()->sum(function ($collection) {
+                return $collection->getItems()->sum('total');
+            })
+        ];
+    }
+
+    public function getExpenseCashbon($date, $request)
+    {
+        return [
+            'count' => $this->getExpenseTransactionsByDate($date, $request, 'kasbon')->count(),
+            'total' => $this->getExpenseTransactionsByDate($date, $request, 'kasbon')->get()->sum(function ($collection) {
+                return $collection->getItems()->sum('total');
+            })
+        ];
+    }
 }

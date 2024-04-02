@@ -58,6 +58,10 @@ Route::group(['prefix' => 'v1'], function () {
             Route::post('customers/new', 'CustomerController@create');
             Route::post('customers/edit/{id}', 'CustomerController@update')->where("id", "[0-9]+");
             Route::delete('customers/trash/{id}', 'CustomerController@trash')->where("id", "[0-9]+");
+
+            // provider
+            Route::get('providers', 'TransactionController@getProvider');
+            Route::get('brands', 'BrandController@getBrands');
         });
     });
 
@@ -125,13 +129,17 @@ Route::group(['prefix' => 'v1'], function () {
             )->where("id", "[A-Za-z0-9_\-]+");
 
             // Product
-            Route::post('product/list', 'User\ProductController@getAll');
-            Route::post('product/list/p', 'User\ProductController@getAllByPaginate');
+            Route::get('product/list', 'User\ProductController@getAll');
+            Route::get('product/list/p', 'User\ProductController@getAllByPaginate');
             Route::get('product/search', 'User\ProductController@getSearchBarcode');
             Route::post('product/new', 'User\ProductController@postNewProduct');
             Route::post(
                 'product/edit/{id}',
                 'User\ProductController@editProduct'
+            )->where("id", "[0-9]+");
+            Route::put(
+                'product/active/{id}',
+                'User\ProductController@activationProduct'
             )->where("id", "[0-9]+");
             Route::delete(
                 'product/trash/{id}',

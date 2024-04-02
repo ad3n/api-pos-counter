@@ -41,7 +41,7 @@ class Product extends Model
 
     public function categorySelection()
     {
-        return $this->hasOne('App\Models\CategorySelection');
+        return $this->hasOne(CategorySelection::class, 'product_id', 'id');
     }
 
     /**

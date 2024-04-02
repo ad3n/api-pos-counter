@@ -24,14 +24,16 @@ class Transaction extends Model
         'merchant_id',
         'status',
         'type',
+        'expense_type',
         'payment_method',
         'payment_status',
         'paid_at',
         'employee_id',
-        'customer_id'
+        'customer_id',
+        'provider_id'
     ];
 
-    protected $appends = ['items', 'name', 'customer'];
+    protected $appends = ['items', 'name', 'customer','provider', 'employee'];
 
     public function user() : BelongsTo
     {
@@ -60,7 +62,7 @@ class Transaction extends Model
 
     public function transactionSaldo() : HasOne
     {
-        return $this->hasOne('App\Model\TransactionSaldo', 'transaction_id', 'id');
+        return $this->hasOne('App\Models\TransactionSaldo', 'transaction_id', 'id');
     }
 
     public function lastDateRecords($date = '')
@@ -85,6 +87,17 @@ class Transaction extends Model
     {
         return $this->belongsTo(Customer::class, 'customer_id', 'id')->first();
     }
+
+    public function getProviderAttribute()
+    {
+        return $this->belongsTo(Provider::class, 'provider_id', 'id')->first();
+    }
+
+    public function getEmployeeAttribute()
+    {
+        return $this->belongsTo(Employee::class, 'employee_id', 'id')->first();
+    }
+
 
     public function getItemsAttribute()
     {

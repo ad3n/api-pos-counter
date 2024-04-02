@@ -124,6 +124,19 @@ class ProductController extends Controller implements Constants
     return response()->json($data, 200);
   }
 
+  /**
+   * Get Brands
+   *
+   * @author Dian Afrial
+   * @return json
+   */
+  public function getBrands(Request $request)
+  {
+    $this->engine->guard = $request->guard;
+    $data = $this->engine->getBrandList($request->all());
+    return response()->json($data, 200);
+  }
+
 
   /**
    * Handle Update User
@@ -165,6 +178,29 @@ class ProductController extends Controller implements Constants
 
       // make process add product
       $res = $this->engine->updateUserProduct($id, $request);
+
+      // if success throw 200 OK
+      return response()->json($res, 200);
+    } catch (ValidationException $e) {
+      return response()->json(error_json($e->errors()), $e->status);
+    } catch (HttpException $e) {
+      return response()->json(error_json($e->getMessage()), $e->getStatusCode());
+    }
+  }
+
+  /**
+   * Handle Active or deactivate Product
+   *
+   * @author Dian Afrial
+   * @return void
+   */
+  public function activationProduct(Request $request, $id)
+  {
+    try {
+      $this->engine->guard = $request->guard;
+      // validate first
+      // make process add product
+      $res = $this->engine->makeActiveDeactivate($id, $request);
 
       // if success throw 200 OK
       return response()->json($res, 200);

@@ -391,12 +391,14 @@ if ( ! function_exists('local_month') ) {
     }
 
     if( $short ) {
-      $format = '%b %Y';
+      //$format = '%b %Y';
+      $format = "{$carbon->shortMonthName} {$carbon->year}";
     } else {
-      $format = '%B %Y';
+      //$format = '%B %Y';
+      $format = "{$carbon->monthName} {$carbon->year}";
     }
 
-    return $carbon->isoFormat($format);
+    return $format;
   }
 }
 
@@ -413,24 +415,24 @@ if ( ! function_exists('local_date') ) {
     Carbon::setLocale( get_locale() );
 
     if( $date ) {
-      $carbon = Carbon::parse($date)->setTimezone( get_timezone() );
+      $carbon = Carbon::parse($date)->locale("id")->setTimezone( get_timezone() );
     } else {
-      $carbon = Carbon::now()->setTimezone(get_timezone());
+      $carbon = Carbon::now()->locale("id")->setTimezone(get_timezone());
     }
 
     if( $short ) {
-      $format = '%d %b %Y';
-      if( $day_name ) {
-        $format = '%a, %d %B %Y';
-      }
+        $format = "{$carbon->day} {$carbon->shortMonthName} {$carbon->year}";
+        if( $day_name ) {
+            $format =  "{$carbon->shortDayName}, {$carbon->day} {$carbon->shortMonthName} {$carbon->year}";
+        }
     } else {
-      $format = '%d %B %Y';
-      if( $day_name ) {
-        $format = '%A, %d %B %Y';
-      }
+        $format = "{$carbon->day} {$carbon->monthName} {$carbon->year}";
+        if( $day_name ) {
+          $format = "{$carbon->dayName}, {$carbon->day} {$carbon->monthName} {$carbon->year}";
+        }
     }
 
-    return $carbon->isoFormat($format);
+    return $format;
   }
 }
 
@@ -451,7 +453,9 @@ if ( ! function_exists('local_datetime') ) {
       $carbon = Carbon::now()->setTimezone(get_timezone());
     }
 
-    return $carbon->isoFormat('%d %B %Y %H:%M');
+    $format = "{$carbon->day} {$carbon->monthName} {$carbon->year} {$carbon->format('H:i')}";
+
+    return $format;
   }
 }
 
@@ -863,7 +867,7 @@ if( ! function_exists('get_locale') ) {
    */
   function get_locale()
   {
-    $merchant = auth()->payload()->get("merchant");
+    $merchant = auth("employee")->user();
 
     if( optional($merchant)->country ) {
       return optional($merchant)->country->locale;
@@ -881,7 +885,7 @@ if( ! function_exists('get_timezone') ) {
    */
   function get_timezone()
   {
-    $merchant = auth()->payload()->get("merchant");
+    $merchant = auth("employee")->user();
 
     if( optional($merchant)->country ) {
       return optional($merchant)->country->timezone;

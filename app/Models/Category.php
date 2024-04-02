@@ -43,10 +43,11 @@ class Category extends Model
         return $this->hasMany('App\Models\CategorySelection');
     }
 
-    public function getProducts($merchant_id) : Builder
+    public function getProducts($merchant_id, $cat_id=null) : Builder
     {
-        return $this->whereHas('categorySelections', function($query) use($merchant_id) {
+        return $this->whereHas('categorySelections', function($query) use($merchant_id, $cat_id) {
             $query->where("merchant_id", $merchant_id);
+            if( $cat_id )  $query->where("category_id", $cat_id);
         });
     }
 

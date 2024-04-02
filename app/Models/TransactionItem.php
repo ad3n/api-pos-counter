@@ -17,6 +17,7 @@ class TransactionItem extends Model
     protected $fillable = [
         'transaction_id',
         'product_id',
+        'category_id',
         'qty',
         'price',
         'total',
@@ -93,8 +94,12 @@ class TransactionItem extends Model
         return $elq;
     }
 
-    public function getProductAttribute() : BelongsTo
+    public function getProductAttribute() : Model | null
     {
-        return $this->belongsTo('App\Models\Product', 'product_id', 'id')->first();
+        if( $this->product_id ) {
+            return $this->belongsTo('App\Models\Product', 'product_id', 'id')->first();
+        }
+
+        return null;
     }
 }

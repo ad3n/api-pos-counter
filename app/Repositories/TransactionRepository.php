@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\Transaction;
 use App\Models\TransactionItem;
 use App\Models\TransactionSaldo;
+use App\Models\Provider;
 use App\Models\Customer;
 use App\Models\PaymentCreditLog;
 use App\Traits\SummaryTransaction;
@@ -158,6 +159,22 @@ class TransactionRepository implements Constants
 		return $res;
 	}
 
+    /**
+     * Provider data list
+     *
+     * @return mixed
+     */
+    public function getProvider()
+    {
+        try {
+            $data = Provider::get();
+
+            return $data;
+        } catch (QueryException $e) {
+            abort(400, $e->getMessage());
+        }
+    }
+
 	/**
 	 * Get All transaction
 	 *
@@ -246,7 +263,10 @@ class TransactionRepository implements Constants
 	{
 		try {
 			$this->merchant_id = $this->getUserMerchant()->id;
-			$args = array_merge($request->only(['offset', 'per_page', 'employee_id']), ['type' => $type]);
+			$args = array_merge(
+                $request->only(['offset', 'per_page', 'employee_id', 'category_id']),
+                ['type' => $type]
+            );
 			$date = $request->input('date') == 'now' ? $this->getWorkDate() : $request->input('date');
 			$list = $this->getTransactionListByDate(
 				$request->input('date') == 'now' ? $this->getWorkDate() : $request->input('date'),
@@ -268,6 +288,10 @@ class TransactionRepository implements Constants
 
 			foreach ($list as $item) {
 				$prepare = static::getPrepareTransaction($item);
+                // if( $request->input('category_id') &&
+                //     $prepare['items'][0]->category_id !== $request->input('category_id') ) {
+                //         continue;
+                // }
 				$data['items'][] = array_merge(
 					$item->only([
 						'id', 'order_no', 'order_name', 'status', 'customer'
@@ -276,14 +300,34 @@ class TransactionRepository implements Constants
 				);
 			}
 
-			$data['total'] = $this->getSummaryTotalByDate($request, $date)['total_omzet'];
-			$data['transactions_credit'] = $this->getSummaryTotalByDate($request, $date)['omzet_credit'];
-			$data['transactions_debit'] = $this->getSummaryTotalByDate($request, $date)['omzet_debit'];
-			$data['expenses'] = $this->getSummaryTotalByDate($request, $date)['expense_debit'];
+            if( $type !== "expense" ) {
+                $data['total'] = $this->getSummaryTotalByDate($request, $date)['total_omzet'];
+			    $data['transactions_credit'] = $this->getSummaryTotalByDate($request, $date)['omzet_credit'];
+			    $data['transactions_debit'] = $this->getSummaryTotalByDate($request, $date)['omzet_debit'];
+            }
+
+            if( $type == "income" ) {
+                $data['transfer'] = $this->getSummaryIncomeTransactionsByCategory($date, $request, [9]);
+                $data['voucher'] = $this->getSummaryIncomeTransactionsByCategory($date, $request, [3]);
+                $data['sp'] = $this->getSummaryIncomeTransactionsByCategory($date, $request, [4,5]);
+                $data['ewallet'] = $this->getSummaryIncomeTransactionsByCategory($date, $request, [7]);
+                $data['accessories'] = $this->getSummaryIncomeTransactionsByCategory($date, $request, [8]);
+                $data['elektrik'] = $this->getSummaryIncomeTransactionsByCategory($date, $request, [1,3]);
+                $data['withdrawal'] = $this->getExpenseWithdrawal($date, $request);
+            }
+
+            if( $type !== "income" ) {
+                $data['expenses'] = $this->getSummaryTotalByDate($request, $date)['expense_debit'];
+                $data['withdrawal'] = $this->getExpenseWithdrawal($date, $request);
+                $data['spending'] = $this->getExpenseSpending($date, $request);
+                $data['loan'] = $this->getExpenseLoan($date, $request);
+                $data['cashbon'] = $this->getExpenseCashbon($date, $request);
+            }
 
 			return $data;
+
 		} catch (QueryException $e) {
-			Log::error("Fetch all transaction Error SQL Query : " . $e->getMessage());
+			Log::error("Fetch all transaction Error SQL Query : " . $e->getCode());
 			abort($e->getCode(), $e->getMessage());
 		}
 	}
@@ -309,8 +353,8 @@ class TransactionRepository implements Constants
 		];
 
 		$data['omzet_debit'] = [
-			'count' => $this->getPaidTransactionsByDate($work_date, $request)->count(),
-			'total' => $this->getPaidTransactionsByDate($work_date, $request)->get()->sum(function ($collection) {
+			'count' => $this->getIncomeTransactionsByDate($work_date, $request)->count(),
+			'total' => $this->getIncomeTransactionsByDate($work_date, $request)->get()->sum(function ($collection) {
 				return $collection->getItems()->sum('total');
 			})
 		];
@@ -490,21 +534,22 @@ class TransactionRepository implements Constants
 	{
 		try {
 			// get cart items
-			$cartItems = $this->cart->getItems($request->input('order_no'));
+			$cartItems = $request->input('order_no') ? $this->cart->getItems($request->input('order_no')) : null;
 
-			$order_no = $cartItems['order_no'];
+			$order_no = $cartItems ? $cartItems['order_no'] : $this->cart->generateCacheNo();
 
 			$data = [
 				'order_no' 						=> $order_no,
 				'merchant_id'					=> $this->getUserMerchant()->id,
 				'status'						=> static::TRANSACTION_STATUS_SUCCESS,
 				'type'							=> static::TRANSACTION_TYPE_EXPENSE,
-				'payment_method' 				=> static::PAYMENT_METHOD_CASH,
-				'payment_status' 				=> static::PAYMENT_STATUS_PAID,
+				'payment_method' 				=> $request->input("payment_method"),
+				'payment_status' 				=> $request->input("payment_status"),
 			];
 
 			if ($request->input('name')) {
 				$data['order_name'] = $request->input('name');
+                $data['name'] = $request->input('name');
 			}
 
 			if ($request->input('work_date')) {
@@ -517,8 +562,20 @@ class TransactionRepository implements Constants
 				$data['supplier_id'] = $request->input('supplier_id');
 			}
 
+            if ($request->input('employee_id')) {
+				$data['employee_id'] = $request->input('employee_id');
+			}
+
+            if ($request->input('provider_id')) {
+				$data['provider_id'] = $request->input('provider_id');
+			}
+
 			if ($request->input('due_date')) {
 				$data['due_date'] = $request->input('due_date');
+			}
+
+            if ($request->input('expense_type')) {
+				$data['expense_type'] = $request->input('expense_type');
 			}
 
 			if (static::PAYMENT_STATUS_PAID) {
@@ -534,7 +591,8 @@ class TransactionRepository implements Constants
 					'name' 	=> $request->input('name'),
 					'qty' 	=> 1,
 					'price' => $request->input('price'),
-				]);
+                    'total' => $request->input("total")
+				], $request->input('expense_type') );
 			}
 
 			// return Array data
@@ -547,7 +605,6 @@ class TransactionRepository implements Constants
 		} catch (HttpException $e) {
 
 			Log::info("Create expense transaction HttpException : " . $e->getMessage());
-
 			abort(400, $e->getMessage());
 		}
 	}
@@ -569,7 +626,7 @@ class TransactionRepository implements Constants
 				'order_name' 					=> __('user.defaults.order_name', ['no' => $order_no]),
 				'merchant_id'					=> $this->getUserMerchant()->id,
 				'status'						=> static::TRANSACTION_STATUS_SUCCESS,
-				'work_date'						=> $this->getCurrentDate(),
+				'work_date'						=> $request->input('work_date') ?? $this->getCurrentDate(),
 				'payment_method' 				=> $request->input('payment_method'),
 				'payment_status' 				=> $request->input('payment_status'),
 			];
@@ -588,6 +645,10 @@ class TransactionRepository implements Constants
 
 			if ($request->input('payment_status') === static::PAYMENT_STATUS_PAID) {
 				$data['paid_at'] = current_datetime();
+			}
+
+            if ($request->input('provider_id')) {
+				$data['provider_id'] = $request->input('provider_id');
 			}
 
 			$transaction = new $this->transaction;
@@ -995,12 +1056,6 @@ class TransactionRepository implements Constants
                     default => $product2->price(),
                 };
 
-				// if ( isset($item['custom_price']) && $item['custom_price'] > 0 ) {
-				// 	$price = intval($item['custom_price']);
-				// } else {
-				// 	$price = $product2->price();
-				// }
-
 				$qty = intval($item['qty']);
 				$total = $total + ($price * $qty);
 			}
@@ -1033,20 +1088,26 @@ class TransactionRepository implements Constants
 				$args = [
 					'transaction_id' => $id,
 					'product_id'	 => $item['id'],
-					'price'			 => $product->price(),
 					'qty'			 => $qty,
 					'total'		 	 => $product->price() * $item['qty'],
 					'name'			 => isset($item['name']) ? $item['name'] : null
 				];
 
+                if( isset($item['category_id']) && $item['category_id'] > 0 ) {
+                    $args['category_id'] = $item['category_id'];
+                }
+
 				if ( isset($item['custom_price']) && $item['custom_price'] > 0 ) {
-					$price = $product->type === static::PRODUCT_TYPE_PC ? $product->price() : intval($item['custom_price']);
+					$price = $product->type === static::PRODUCT_TYPE_PC ? $product->price() :
+                        ($product->type === static::PRODUCT_TYPE_VOLUME ?
+                            (intval($item['custom_price']) + $product->price()) : intval($item['custom_price']));
 				} else {
 					$price = $product->price();
 				}
 
-				if( isset($item['custom_price']) && $item['custom_price'] > 0 && $product->type === static::PRODUCT_TYPE_PC ) {
-					$args['total'] = $item['custom_price'];
+				if( isset(
+                    $item['custom_price']) && $item['custom_price'] > 0 && $product->type === static::PRODUCT_TYPE_PC ) {
+					$args['total'] = $price;
 				} else {
 					$args['total'] = $price * $item['qty'];
 				}
@@ -1079,15 +1140,24 @@ class TransactionRepository implements Constants
 	 * @param array $items
 	 * @return void
 	 */
-	protected function addDebitItems($id, $items)
+	protected function addDebitItems($id, $items, $type)
 	{
-		TransactionItem::create([
-			'transaction_id' => $id,
-			'qty'			 => $items['qty'],
-			'price'			 => $items['price'],
-			'debit'			 => $items['price'] * $items['qty'],
-			'total'		 	 => $items['price'] * $items['qty'],
-		]);
+        $params = [
+			'transaction_id'    => $id,
+            'name'              => $items['name'],
+			'qty'			    => $items['qty'],
+			'price'			    => $items['price'],
+			'debit'			    => $items['total'],
+			'total'		 	    => $items['total'],
+		];
+
+        if( $type === "tarik_tunai" ) {
+            $params['debit'] = $items['total'];
+            $params['credit'] = $items['price'];
+            $params['total'] =  $items['total'] - $items['price'];
+        }
+
+		TransactionItem::create($params);
 	}
 
 	/**

@@ -33,7 +33,8 @@ trait Authentication
   public function getUserMerchant() : Object
   {
     //dump(auth($guard)->payload()->get("merchant"));
-    return auth($this->guard)->user()->get("merchant");
+    $merchantId = auth("employee")->user()->merchant_id;
+    return Merchant::find($merchantId);
   }
 
   /**

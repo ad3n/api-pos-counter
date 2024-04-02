@@ -84,7 +84,7 @@ class TransactionController extends Controller implements Constants
                     'items'          => 'required|array|min:1'
                 ]
             );
-    
+
             if ($validator->fails()) {
                 throw new ValidationException($validator);
             }
@@ -399,9 +399,8 @@ class TransactionController extends Controller implements Constants
     public function validationExpense($request)
     {
         $validator = Validator::make(
-            $request->only(['order_no', 'name', 'price']),
+            $request->only(['name', 'price']),
             [
-                'order_no'  => 'required|unique:transactions,order_no',
                 'name'      => 'required|string',
                 'price'     => 'required',
             ]
