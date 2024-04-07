@@ -97,6 +97,77 @@ class ProductController extends Controller implements Constants
     return response()->json($data, 200);
   }
 
+ /**
+   * Get Product stocks
+   *
+   * @author Dian Afrial
+   * @return mixed
+   */
+  public function getStockProducts(Request $request, $product_id)
+  {
+    try {
+        $this->engine->guard = $request->guard;
+        $data = $this->engine->getStockist($product_id);
+
+        return response()->json($data, 200);
+    } catch (HttpException $e) {
+        return response()->json(error_json($e->getMessage()), $e->getStatusCode());
+    }
+  }
+
+  /**
+   * Add Product stock
+   *
+   * @author Dian Afrial
+   * @return mixed
+   */
+  public function addStockProduct(Request $request, $product_id)
+  {
+    try {
+        $this->engine->guard = $request->guard;
+        $data = $this->engine->addStock($product_id, $request->input("qty"), $request->input("employee_id") );
+
+        return response()->json($data, 200);
+    } catch (HttpException $e) {
+        return response()->json(error_json($e->getMessage()), $e->getStatusCode());
+    }
+  }
+
+  /**
+   * Update Product stock
+   *
+   * @author Dian Afrial
+   * @return mixed
+   */
+  public function updateStockProduct(Request $request, $id)
+  {
+    try {
+        $this->engine->guard = $request->guard;
+        $data = $this->engine->updateStock($id, $request);
+
+        return response()->json($data, 200);
+    } catch (HttpException $e) {
+        return response()->json(error_json($e->getMessage()), $e->getStatusCode());
+    }
+  }
+
+  /**
+   * Remove/Delete Product stock
+   *
+   * @author Dian Afrial
+   * @return mixed
+   */
+  public function removeStockProduct(Request $request, $id)
+  {
+    try {
+        $this->engine->guard = $request->guard;
+        $data = $this->engine->deleteStock($id, $request);
+
+        return response()->json($data, 200);
+    } catch (HttpException $e) {
+        return response()->json(error_json($e->getMessage()), $e->getStatusCode());
+    }
+  }
 
   /**
    * Get Master category

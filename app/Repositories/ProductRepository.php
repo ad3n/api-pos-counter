@@ -5,6 +5,7 @@ namespace App\Repositories;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\CategorySelection;
+use App\Models\Stock;
 use App\Traits\Authentication;
 use App\Interfaces\Constants;
 use App\Jobs\Events\MerchantProductAdded;
@@ -273,23 +274,30 @@ class ProductRepository implements Constants
 			foreach ($categories as $item) {
 				$id = $item->id;
 				$data[$id]['name'] = $item->name;
+
+                $stocks = DB::table('stocks')
+                   ->select("product_id", DB::raw('SUM(qty) as total'))
+                   ->whereNull('deleted_at')
+                   ->groupBy(['product_id']);
+
 				$models = DB::table('products')
-                    ->select(
-                        "products.id as id",
-                        "products.name as name",
-                        "products.code as code",
-                        "products.type as type",
-                        "category_selections.category_id as category_id",
-                        "products.brand_id as brand_id",
-                        "brands.name as brand_name",
-                        "products.supplier_id as supplier_id",
-                        "suppliers.name as supplier_name",
-                        "products.regular_price as price",
-                        "products.sale_price as sale_price",
-                        "products.on_sale as on_sale",
-                        "products.active as active",
-                        "products.capital_cost as capital_cost",
-                        "products.created_at as created_at",
+                    ->selectRaw(
+                        "products.id as id,
+                        products.name as name,
+                        products.code as code,
+                        products.type as type,
+                        category_selections.category_id as category_id,
+                        products.brand_id as brand_id,
+                        brands.name as brand_name,
+                        products.supplier_id as supplier_id,
+                        suppliers.name as supplier_name,
+                        products.regular_price as price,
+                        products.sale_price as sale_price,
+                        products.on_sale as on_sale,
+                        products.active as active,
+                        stocks.total as total_qty,
+                        products.capital_cost as capital_cost,
+                        products.created_at as created_at",
                     )
                     ->leftJoin('brands', function ($join) {
                         $join->on('products.brand_id', '=', 'brands.id');
@@ -303,7 +311,10 @@ class ProductRepository implements Constants
 					})
 					->where("products.merchant_id", $this->getUserMerchant()->id)
                     ->where("products.active", $request->input('active') == "true" ? 1 : 0 )
-					->whereNull("products.deleted_at");
+					->whereNull("products.deleted_at")
+                    ->leftJoinSub($stocks, 'stocks', function (JoinClause $join) {
+                        $join->on('products.id', '=', 'stocks.product_id');
+                    });
 
 				if ($request->input('keyword')) {
 					$keyword = $request->input('keyword');
@@ -311,7 +322,7 @@ class ProductRepository implements Constants
 						->orWhere("products.code", "like", "%{$keyword}%");
 				}
 
-				$models = $models->orderBy("name", "asc")
+				$models = $models->orderBy("price", "asc")
 					->get()
 					->toArray();
 
@@ -499,7 +510,6 @@ class ProductRepository implements Constants
 	public function deleteUserProduct($id, $request)
 	{
 		try {
-
 			$model = $this->product->findOrFail($id);
 
 			if (!$model->transactionItems()->exists()) {
@@ -608,6 +618,110 @@ class ProductRepository implements Constants
 			abort(400, $e->getMessage());
 		}
 	}
+
+    public function getStockist($product_id)
+    {
+        try {
+            $product = new Product;
+            $model = $product->find($product_id);
+
+            if( $model->type !== static::PRODUCT_TYPE_PC ) {
+                return [
+                    'success'   => false,
+                    'messages'  => 'invalid product type',
+                ];
+            }
+
+            return [
+                'success'   => true,
+                'messages'  => 'Stock product result',
+                'total'     => $model->stocks()->sum("qty"),
+                'data'      => $model->stocks()->take(100)->orderBy("created_at", "desc")->get()
+            ];
+
+        } catch (QueryException $th) {
+            abort(400, $th->getMessage());
+        }
+    }
+
+    public function addStock($product_id, $qty, $staff_id = null, $trans_id = null)
+    {
+        try {
+            $product = new Product;
+            $model = $product->find($product_id);
+
+            if( $model->type !== static::PRODUCT_TYPE_PC ) {
+                return [
+                    'success'   => false,
+                    'messages'  => 'invalid product type',
+                ];
+            }
+
+            // add stock type
+            $stock = new Stock;
+            $stock->product_id = $product_id;
+            $stock->qty = $qty;
+            $stock->type = $qty < 0 ? static::STOCK_TYPE_OUT : static::STOCK_TYPE_IN;
+            if( $staff_id ) $stock->created_by = $staff_id;
+            if( $trans_id ) $stock->transaction_item_id = $trans_id;
+            $stock->created_at = current_datetime();
+            $stock->save();
+
+            return [
+                'success'   => true,
+                'messages'  => 'stock product is added',
+            ];
+
+        } catch (QueryException $th) {
+            abort(400, $th->getMessage());
+        }
+    }
+
+    public function updateStock($id, $request)
+    {
+        try {
+            // add stock type
+            $stock = new Stock;
+            // find model
+            $model = $stock->findOrFail($id);
+            $model->qty = $request->input("qty");
+            $model->type = $request->input("qty") < 0 ? static::STOCK_TYPE_OUT : static::STOCK_TYPE_IN;
+            $model->updated_by = $request->input("employee_id");
+            $model->updated_at = current_datetime();
+            $model->save();
+
+            return [
+                'success'   => true,
+                'messages'  => 'stock product is updated',
+            ];
+
+        } catch (QueryException $th) {
+            abort(400, $th->getMessage());
+        } catch (ModelNotFoundException $th) {
+            abort(400, $th->getMessage());
+        }
+    }
+
+    public function deleteStock($id, $request)
+    {
+        try {
+            // add stock type
+            $stock = new Stock;
+            // find model
+            $model = $stock->findOrFail($id);
+            $model->forceDelete();
+
+            return [
+                'success'   => true,
+                'messages'  => 'stock product is deleted',
+            ];
+
+        } catch (QueryException $th) {
+            abort(400, $th->getMessage());
+        } catch (ModelNotFoundException $th) {
+            abort(400, $th->getMessage());
+        }
+    }
 
 	protected function syncCategorySelection($model, $new_id)
 	{

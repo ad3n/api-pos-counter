@@ -88,6 +88,23 @@ class EmployeeController extends Controller implements Constants
         }
     }
 
+    public function getUser(Request $request, $id)
+    {
+        try {
+            $this->engine->guard = $request->guard;
+            // fetch first
+            $userData = $this->engine->fetchUser($id);
+
+            // if success throw 200 OK
+            return response()->json($userData, 200);
+        } catch (ValidationException $e) {
+            return response()->json(error_validation_json($e->errors()), $e->status);
+        } catch (HttpException $e) {
+            return response()->json(error_json($e->getMessage()), $e->getStatusCode());
+        }
+    }
+
+
     public function createUser(Request $request)
     {
         try {

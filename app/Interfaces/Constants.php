@@ -62,4 +62,10 @@ interface Constants
 	const PRODUCT_TYPE_PC = 'piece';
 	const PRODUCT_TYPE_VOLUME = 'volume';
 	const PRODUCT_TYPE_SALDO = 'saldo';
+
+    /**
+	 * Type of Qty
+	 */
+	const STOCK_TYPE_IN = 'in';
+	const STOCK_TYPE_OUT = 'out';
 }

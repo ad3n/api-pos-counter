@@ -2,6 +2,7 @@
 
 namespace App\Repositories;
 
+use App\Models\Stock;
 use Auth;
 use Cache;
 use Log;
@@ -18,6 +19,7 @@ use App\Traits\Authentication;
 use App\Traits\OutputWrap;
 use App\Repositories\CartRepository;
 use App\Repositories\SaldoRepository;
+use App\Repositories\ProductRepository;
 use App\Interfaces\Constants;
 use Illuminate\Validation\ValidateException;
 use Illuminate\Database\QueryException;
@@ -42,6 +44,14 @@ class TransactionRepository implements Constants
 	 * @return void
 	 */
 	protected $transaction;
+
+    /**
+	 * Product Engine
+	 *
+	 * @author Dian Afrial
+	 * @return void
+	 */
+	protected $productEngine;
 
 	/**
 	 * Product Model
@@ -100,12 +110,14 @@ class TransactionRepository implements Constants
 		Transaction $transaction,
 		Product $product,
 		CartRepository $cart,
-		SaldoRepository $saldo
+		SaldoRepository $saldo,
+        ProductRepository $productEngine
 	) {
 		$this->transaction = $transaction;
 		$this->product = $product;
 		$this->cart = $cart;
 		$this->saldo = $saldo;
+        $this->productEngine = $productEngine;
 
 		$this->cache = Cache::store(config('global.date.driver'));
 		$this->max_items = config('global.transaction.count_items_max');
@@ -651,6 +663,10 @@ class TransactionRepository implements Constants
 				$data['provider_id'] = $request->input('provider_id');
 			}
 
+            if ($request->input('customer_id')) {
+				$data['customer_id'] = $request->input('customer_id');
+			}
+
 			$transaction = new $this->transaction;
 			$transaction->fill($data)->save();
 
@@ -853,6 +869,14 @@ class TransactionRepository implements Constants
 			// check saldo first
 			$transaction = Transaction::where("order_no", $order_no)->first();
 
+            $transaction->getItems()->each(function($model, $key){
+                $stock = new Stock;
+                $hasStocked = $stock->where("transaction_item_id", $model->id)->first();
+                if( $hasStocked ) {
+                    $hasStocked->forceDelete();
+                }
+            });
+
 			if (!$transaction) {
 				abort(400, 'Order Number not found');
 			}
@@ -940,6 +964,9 @@ class TransactionRepository implements Constants
 
 			//copy attributes from original model
 			$newRecord = $model->replicate();
+            $model->order_no = generate_order_no();
+            $model->save();
+
 			$newRecord->payment_status = $status;
 			$newRecord->paid_at = current_datetime();
 			$newRecord->save();
@@ -1105,8 +1132,10 @@ class TransactionRepository implements Constants
 					$price = $product->price();
 				}
 
-				if( isset(
-                    $item['custom_price']) && $item['custom_price'] > 0 && $product->type === static::PRODUCT_TYPE_PC ) {
+				if( isset($item['custom_price']) &&
+                    $item['custom_price'] > 0 &&
+                    $product->type === static::PRODUCT_TYPE_PC
+                ) {
 					$args['total'] = $price;
 				} else {
 					$args['total'] = $price * $item['qty'];
@@ -1114,13 +1143,22 @@ class TransactionRepository implements Constants
 
 				$args['price'] = $price;
 
+                if( isset($item['cost']) && $item['cost'] > 0 ) {
+					$args['cost'] = $item['cost'];
+                    $args['total_cost'] = $item['cost'] * $item['qty'];
+				}
+
 				if( $type == 'credit' ) {
 					$args['credit'] = $args['total'];
 				} else if( $type == 'debit' ) {
 					$args['debit'] = $args['total'];
 				}
 
-				TransactionItem::create($args);
+				$transaction = TransactionItem::create($args);
+
+                if( $product->type === static::PRODUCT_TYPE_PC ) {
+                    $this->productEngine->addStock($item['id'], ($item['qty'] * -1), $item['employee_id'], $transaction->id);
+                }
 			}
 
 			if ($product->qty > 0 && $item['qty'] > 0) {

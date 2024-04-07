@@ -39,9 +39,15 @@ class Product extends Model
         return $this->belongsTo('App\Models\Category');
     }
 
+
     public function categorySelection()
     {
         return $this->hasOne(CategorySelection::class, 'product_id', 'id');
+    }
+
+    public function stocks() : HasMany
+    {
+        return $this->hasMany(Stock::class, 'product_id', 'id');
     }
 
     /**

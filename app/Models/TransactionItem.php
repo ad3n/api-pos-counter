@@ -20,6 +20,8 @@ class TransactionItem extends Model
         'category_id',
         'qty',
         'price',
+        'cost',
+        'total_cost',
         'total',
         'debit',
         'credit',

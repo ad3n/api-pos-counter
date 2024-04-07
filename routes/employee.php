@@ -35,6 +35,7 @@ Route::group(['prefix' => 'v1'], function () {
             // Employee Roles
             Route::get('employee', 'EmployeeController@getAll');
             Route::post('employee/new', 'EmployeeController@createUser');
+            Route::get('employee/me/{id}', 'EmployeeController@getUser')->where("id", "[0-9]+");
             Route::post('employee/edit/{id}', 'EmployeeController@updateUser')->where("id", "[0-9]+");
             Route::post('employee/password/{id}', 'EmployeeController@changePassword')->where("id", "[0-9]+");
             Route::get('employee/session', 'EmployeeController@getSession');
@@ -145,8 +146,27 @@ Route::group(['prefix' => 'v1'], function () {
                 'product/trash/{id}',
                 'User\ProductController@trashProduct'
             )->where("id", "[0-9]+");
-            Route::get('product/categorized', 'User\ProductController@getCategorized');
 
+            // Stocks
+            Route::get(
+                'product/stocks/{id}',
+                'User\ProductController@getStockProducts'
+            )->where("id", "[0-9]+");
+            Route::post(
+                'product/stocks/{id}',
+                'User\ProductController@addStockProduct'
+            )->where("id", "[0-9]+");
+            Route::put(
+                'product/stocks/{id}',
+                'User\ProductController@updateStockProduct'
+            )->where("id", "[0-9]+");
+
+            Route::delete(
+                'product/stocks/{id}',
+                'User\ProductController@removeStockProduct'
+            )->where("id", "[0-9]+");
+
+            Route::get('product/categorized', 'User\ProductController@getCategorized');
             Route::get('categories', 'User\ProductController@getMasterCategory');
             Route::get('categories/merchant', 'User\ProductController@getMerchantCategory');
 

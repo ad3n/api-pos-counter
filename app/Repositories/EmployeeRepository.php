@@ -64,9 +64,13 @@ class EmployeeRepository implements Constants
     public function fetchUser($id)
     {
         try {
-            $user = $this->user->find($id);
+            $user = $this->user->findOrFail($id);
+            $transaction_count = Transaction::where("employee_id", $user->id)->whereNotNull("paid_at")->get()->count();
 
-            return $user;
+            return [
+                'user' => $user,
+                'stars' => $transaction_count
+            ];
         } catch (ModelNotFoundException $e) {
             abort(400, $e->getMessage());
         }
