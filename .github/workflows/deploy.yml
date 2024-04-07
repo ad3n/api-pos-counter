@@ -1,0 +1,27 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - production
+  pull_request:
+    branches:
+      - production
+
+jobs:
+  deploy:
+    name: Checkout & Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Deploy to server
+        uses: up9cloud/action-rsync@master
+        env:
+          TARGET: ${{ secrets.PATH }}
+          HOST: ${{ secrets.HOST }}
+          USER: ${{ secrets.USERNAME }}
+          PORT: ${{ secrets.PORT }}
+          KEY: ${{ secrets.SSHKEY }}
+          ARGS: -avzrut --delete --exclude=/.git/ --exclude='.env' --exclude=/.github/
+          POST_SCRIPT: |
+            cd ${{ secrets.PATH }} && cd ../scripts && sh deploy.sh
