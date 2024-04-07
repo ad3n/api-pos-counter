@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
             InitEmployeeSeeder::class,
             InitUserSettingSeeder::class,
             BrandSeeder::class,
+            ProviderTableSeeder::class,
             ProductsTableSeeder::class,
             CategoriesTableSeeder::class,
             SaldosTableSeeder::class,

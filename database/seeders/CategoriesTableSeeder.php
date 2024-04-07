@@ -56,6 +56,11 @@ class CategoriesTableSeeder extends Seeder
                 'name' => 'HP Aksesories',
                 'created_at' => date("Y-m-d H:i:s")
             ],
+            [
+                'id'    => 9,
+                'name' => 'Transfer',
+                'created_at' => date("Y-m-d H:i:s")
+            ],
         ];
 
         //Category::factory()->create($data);
