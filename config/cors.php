@@ -19,7 +19,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['https://www.pinkfam.biz.id', 'https://pinkfam.biz.id'],
+    'allowed_origins' => ['*pinkfam.biz.id'],
 
     'allowed_origins_patterns' => [],
 
