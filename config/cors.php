@@ -19,7 +19,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*pinkfam.biz.id/*', "localhost", "127.0.0.1"],
+    'allowed_origins' => ['no-cors'],
 
     'allowed_origins_patterns' => [],
 
