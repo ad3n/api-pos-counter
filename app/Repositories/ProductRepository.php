@@ -443,12 +443,11 @@ class ProductRepository implements Constants
 		} catch (ModelNotFoundException $e) {
 
 			Log::error("Model Not Found : " . $e->getMessage());
-
 			abort(400, __("user.model_not_found"));
+
 		} catch (QueryException $e) {
 
 			Log::error("Edit User Product SQL Query : " . $e->getMessage());
-
 			abort(500, $e->getMessage());
 		}
 
@@ -491,12 +490,11 @@ class ProductRepository implements Constants
         } catch (ModelNotFoundException $e) {
 
 			Log::error("Model Not Found : " . $e->getMessage());
-
 			abort(400, __("user.model_not_found"));
+
         } catch (QueryException $e) {
 
 			Log::error("Activation Product SQL Query : " . $e->getMessage());
-
 			abort($e->getCode(), $e->getMessage());
 		}
     }
@@ -636,6 +634,7 @@ class ProductRepository implements Constants
                 'success'   => true,
                 'messages'  => 'Stock product result',
                 'total'     => $model->stocks()->sum("qty"),
+                'edit'      => $model->stocks()->where("type", "in")->orderBy("created_at", "desc")->first(),
                 'data'      => $model->stocks()->take(100)->orderBy("created_at", "desc")->get()
             ];
 
