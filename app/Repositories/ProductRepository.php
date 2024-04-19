@@ -420,6 +420,10 @@ class ProductRepository implements Constants
 				$prepare['qty'] = $request->input("qty");
 			}
 
+            if ($request->input("brand_id")) {
+				$prepare['brand_id'] = intval($request->input("brand_id"));
+			}
+
 			if ($request->input("type")) {
 				if (!in_array($request->input("type"), [
 					static::PRODUCT_TYPE_PC,
@@ -661,6 +665,7 @@ class ProductRepository implements Constants
             $stock->product_id = $product_id;
             $stock->qty = $qty;
             $stock->type = $qty < 0 ? static::STOCK_TYPE_OUT : static::STOCK_TYPE_IN;
+
             if( $staff_id ) $stock->created_by = $staff_id;
             if( $trans_id ) $stock->transaction_item_id = $trans_id;
             $stock->created_at = current_datetime();
