@@ -12,7 +12,7 @@ use App\Traits\OutputDate;
 
 class Stock extends Model
 {
-    use SoftDeletes, HasFactory;
+    use SoftDeletes, HasFactory, OutputDate;
 
     public function product()
     {
