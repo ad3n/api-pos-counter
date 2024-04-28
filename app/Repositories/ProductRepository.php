@@ -322,7 +322,7 @@ class ProductRepository implements Constants
 						->orWhere("products.code", "like", "%{$keyword}%");
 				}
 
-				$models = $models->orderBy("price", "asc")->orderBy("name", "asc")
+				$models = $models->orderBy("name", "asc")->orderBy("price", "asc")
 					->get()
 					->toArray();
 
