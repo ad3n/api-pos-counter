@@ -22,6 +22,6 @@ jobs:
           USER: ${{ secrets.USERNAME }}
           PORT: ${{ secrets.PORT }}
           KEY: ${{ secrets.SSHKEY }}
-          ARGS: -avzrut --delete --exclude=/.git/ --exclude='.env' --exclude=/.github/
+          ARGS: -avzrut --delete --exclude=/.git/ --exclude=/storage/ --exclude='.env' --exclude=/.github/
           POST_SCRIPT: |
             cd ${{ secrets.PATH }} && cd ../scripts && sh deploy.sh

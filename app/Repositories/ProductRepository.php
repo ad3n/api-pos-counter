@@ -322,7 +322,7 @@ class ProductRepository implements Constants
 						->orWhere("products.code", "like", "%{$keyword}%");
 				}
 
-				$models = $models->orderBy("price", "asc")
+				$models = $models->orderBy("name", "asc")->orderBy("price", "asc")
 					->get()
 					->toArray();
 
@@ -420,6 +420,10 @@ class ProductRepository implements Constants
 				$prepare['qty'] = $request->input("qty");
 			}
 
+            if ($request->input("brand_id")) {
+				$prepare['brand_id'] = intval($request->input("brand_id"));
+			}
+
 			if ($request->input("type")) {
 				if (!in_array($request->input("type"), [
 					static::PRODUCT_TYPE_PC,
@@ -443,12 +447,11 @@ class ProductRepository implements Constants
 		} catch (ModelNotFoundException $e) {
 
 			Log::error("Model Not Found : " . $e->getMessage());
-
 			abort(400, __("user.model_not_found"));
+
 		} catch (QueryException $e) {
 
 			Log::error("Edit User Product SQL Query : " . $e->getMessage());
-
 			abort(500, $e->getMessage());
 		}
 
@@ -491,12 +494,11 @@ class ProductRepository implements Constants
         } catch (ModelNotFoundException $e) {
 
 			Log::error("Model Not Found : " . $e->getMessage());
-
 			abort(400, __("user.model_not_found"));
+
         } catch (QueryException $e) {
 
 			Log::error("Activation Product SQL Query : " . $e->getMessage());
-
 			abort($e->getCode(), $e->getMessage());
 		}
     }
@@ -636,6 +638,7 @@ class ProductRepository implements Constants
                 'success'   => true,
                 'messages'  => 'Stock product result',
                 'total'     => $model->stocks()->sum("qty"),
+                'edit'      => $model->stocks()->where("type", "in")->orderBy("created_at", "desc")->first(),
                 'data'      => $model->stocks()->take(100)->orderBy("created_at", "desc")->get()
             ];
 
@@ -662,6 +665,7 @@ class ProductRepository implements Constants
             $stock->product_id = $product_id;
             $stock->qty = $qty;
             $stock->type = $qty < 0 ? static::STOCK_TYPE_OUT : static::STOCK_TYPE_IN;
+
             if( $staff_id ) $stock->created_by = $staff_id;
             if( $trans_id ) $stock->transaction_item_id = $trans_id;
             $stock->created_at = current_datetime();

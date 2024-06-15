@@ -12,7 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('transactions', function (Blueprint $table) {
-            $table->enum("expense_type", ["tarik_tunai", "belanja", "pinjaman", "kasbon", "lain"])->after("type")->nullable();
+            $table->enum("expense_type", ["tarik_tunai", "belanja", "pinjaman", "kasbon", "lain"])
+                ->after("type")->nullable();
             $table->unsignedTinyInteger("provider_id")->after('supplier_id')->index();
 
         });

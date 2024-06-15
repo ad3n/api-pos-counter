@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Illuminate\Validation\ValidationException;
+use Log;
 use App\Repositories\AuthRepository;
 use Auth;
 use App\Traits\Authentication;
@@ -107,6 +108,7 @@ class AuthController extends Controller
      */
     public function validation($request)
     {
+        Log::info('log info', $request->only("no_hp", "password"));
 
         $validator = Validator::make(
             $request->only("no_hp", "password"),

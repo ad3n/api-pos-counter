@@ -1,8 +1,8 @@
 <?php
 
 use Carbon\Carbon;
-use Str;
-use Request;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Request;
 
 /**
  * Get application name
@@ -13,7 +13,7 @@ if ( ! function_exists('appname') )
 {
   function appname()
   {
-    return empty(application_name()) ? env('APP_NAME', '') : application_name();
+    return env('APP_NAME', 'Pink Cell POS');
   }
 }
 
